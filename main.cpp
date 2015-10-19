@@ -8,7 +8,8 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
-
+#include <omp.h>
+#include <mpi.h>
 using namespace std;
 
 void print_error(int error);
@@ -38,12 +39,10 @@ float calcularAcuracia(vector<string> predicoes,FILE *baseTeste,int nAtributos){
 		nLinhasBaseTeste++;
 		linhaTeste = strtok(linhaTeste,",");
 		contador_Atributos = 1;
-		while(contador_Atributos < nAtributos ){// && contador_Atributos < nAtributos){
+		while(contador_Atributos < nAtributos ){
 			linhaTeste = strtok(NULL,",");
 			contador_Atributos++;
 		}
-		// cout<<"Predicted: "<<*it<<"Correta:"<<linhaTeste<<endl;
-
 		if(strcmp(it->c_str(),linhaTeste) == 0) {
 			predicoes_corretas++;
 		} else {
@@ -52,13 +51,37 @@ float calcularAcuracia(vector<string> predicoes,FILE *baseTeste,int nAtributos){
 
 		linhaTeste = NULL;
 	}
-	// cout<<predicoes_corretas<<""<<nLinhasBaseTeste
 	return (predicoes_corretas/(nLinhasBaseTeste*1.0))*100.0;
 }
 
 
 int main(int argc,char *argv[]){
 
+	int nthreads2, tid;
+
+	int rank;
+	char hostname[256];
+
+	MPI_Init(&argc,&argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	gethostname(hostname,255);
+
+	printf("Hello world!  I am process number: %d on host %s\n", rank, hostname);
+		#pragma omp parallel private(nthreads2, tid)
+		{
+			tid = omp_get_thread_num();
+			printf("Thread: %d\n",tid);
+			if (tid == 0) {
+				nthreads2 = omp_get_num_threads();
+				printf("Number of threads = %d\n", nthreads2);
+			}
+		}
+	cout<<"Espera aqui: "<<rank;
+
+	
+	if(rank == 0){
+	
+	
 	int nthreads = 4, nmachines = 4, k = 3,option =0;
 	float splitPoint = 66.6;
 	char *filename = NULL;
@@ -150,8 +173,11 @@ int main(int argc,char *argv[]){
 	if(linhaTreinamento)
 	  free(linhaTreinamento);  
 	if(linhaTeste)
-		free(linhaTeste);	
-	
+		free(linhaTeste);
+
+
+	}	
+	MPI_Finalize();
 	return 0;
 }
 

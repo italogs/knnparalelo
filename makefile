@@ -1,8 +1,8 @@
 run: compile 
-	./exec -t 4 -n 4 -k 3 -f "iris.data" -s 66.6 
+	mpirun -np 4 exec.o 
 
 compile: 
-	g++ -o exec main.cpp -lm #-Wall -Werror -pedantic 
+	mpic++ -lm -W  -pedantic -fopenmp main.cpp -o exec.o 
 
 # delete:
 	# rm main teste.data treinamento.data
