@@ -8,7 +8,9 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
+
 using namespace std;
+
 void print_error(int error);
 int getNAtributos(FILE *base);
 bool compAsc(const pair<string, float> &a, const pair<string, float> &b);
@@ -20,6 +22,39 @@ float distanciaEuclidiana(char *tuplaTreinamento,char *tuplaTeste,int nAtributos
 map<string, float> getKvizinhos(map<string, float> vizinhos, int k);
 string predizerClasse(map<string, float> kvizinhos);
 map<string, float> getVizinhos(FILE *baseTreinamento,char *tuplaTeste,int k,int nAtributos);
+
+
+float calcularAcuracia(vector<string> predicoes,FILE *baseTeste,int nAtributos){
+	int predicoes_corretas = 0;
+	rewind(baseTeste);
+
+	char *linhaTeste = NULL;
+	size_t lenTeste = 0;
+	int contador_Atributos = 0;
+	int nLinhasBaseTeste=0;
+	for (vector<string>::iterator it = predicoes.begin(); it != predicoes.end() ; ++it){
+	
+		getline(&linhaTeste, &lenTeste, baseTeste);
+		nLinhasBaseTeste++;
+		linhaTeste = strtok(linhaTeste,",");
+		contador_Atributos = 1;
+		while(contador_Atributos < nAtributos ){// && contador_Atributos < nAtributos){
+			linhaTeste = strtok(NULL,",");
+			contador_Atributos++;
+		}
+		// cout<<"Predicted: "<<*it<<"Correta:"<<linhaTeste<<endl;
+
+		if(strcmp(it->c_str(),linhaTeste) == 0) {
+			predicoes_corretas++;
+		} else {
+			cout<<"Nao"<<endl;
+		}
+
+		linhaTeste = NULL;
+	}
+	// cout<<predicoes_corretas<<""<<nLinhasBaseTeste
+	return (predicoes_corretas/(nLinhasBaseTeste*1.0))*100.0;
+}
 
 
 int main(int argc,char *argv[]){
@@ -50,68 +85,66 @@ int main(int argc,char *argv[]){
 			break;
 		}
 	}
-
-	printf("\n-----------\nEntrada:\nk: %d, threads: %d, machines: %d, file: %s, splitPoint: %f\n-----------\n\n\n",k,nthreads,nmachines,filename,splitPoint);
+	// splitPoint = 0.67;
+	cout<<"\n-----------\nEntrada:\nk: "<<k<<" , threads: "<<nthreads<<", machines: "<<nmachines<<", file: "<<filename<<", splitPoint: "<<splitPoint<<"\n-----------\n\n\n";
 
 	char *linhaTreinamento = NULL;
 	size_t lenTreinamento = 0;
-	ssize_t readTreinamento;
 
 	char *linhaTeste = NULL;
 	size_t lenTeste = 0;
-	// ssize_t readTeste;
 
-	FILE *f = NULL;
+	FILE *baseOriginal = NULL;
 
 	if(!filename)
-		f = fopen("iris.data","r");
+		baseOriginal = fopen("iris.data","r");
 	else
-		f = fopen(filename,"r");
+		baseOriginal = fopen(filename,"r");
 	
-	if(!f) {
-		printf("Arquivo nao existe.\n\n");
+	if(!baseOriginal) {
+		cout<<"Arquivo nao existe.\n\n";
 		exit(EXIT_FAILURE);
 	}
 	FILE *baseTreinamento = fopen("treinamento.data","w+");
 	FILE *baseTeste = fopen("teste.data","w+");
 
-	int nlinhas = 0;
-	while ((getline(&linhaTreinamento, &lenTreinamento, f)) != -1)
-       nlinhas++;
+	int nLinhasBaseOriginal = 0;
+	while ((getline(&linhaTreinamento, &lenTreinamento, baseOriginal)) != -1)
+       nLinhasBaseOriginal++;
    	
-   	rewind(f);
+   	rewind(baseOriginal);
 
-   	int splitTeste = (int) ((splitPoint * nlinhas) / 100.0);
-   	int contador = 0;
-
-	while ((getline(&linhaTreinamento, &lenTreinamento, f)) != -1) {
-		if(contador == splitTeste){
+   	int splitBaseOriginal = (int) ((splitPoint * nLinhasBaseOriginal) / 100.0);
+   	int nLinhasBaseTreinamento = 0;
+   	int nLinhasBaseTeste = 0;
+	while ((getline(&linhaTreinamento, &lenTreinamento, baseOriginal)) != -1) {
+		if(nLinhasBaseTreinamento == splitBaseOriginal){
 			fprintf(baseTeste,"%s",linhaTreinamento);
+			nLinhasBaseTeste++;
 		} else{
 			fprintf(baseTreinamento,"%s",linhaTreinamento);
-			contador++;
+			nLinhasBaseTreinamento++;
 		}
    	}
-
-   	fclose(f);
   
    	rewind(baseTreinamento);
    	int nAtributos = getNAtributos(baseTreinamento);
  	rewind(baseTreinamento);
    	rewind(baseTeste);
    	
-	while ((readTreinamento = getline(&linhaTeste, &lenTeste, baseTeste)) != -1) {
+  	vector<string> predicoes;
+	while ((getline(&linhaTeste, &lenTeste, baseTeste)) != -1) {
 	
-		map<string, float> kvizinhos = getVizinhos(baseTreinamento,linhaTeste,k,nAtributos);
-		string classeEncontrada = predizerClasse(kvizinhos);
-
-		cout<<"Classe encontrada: "<<classeEncontrada<<endl;
-
+		map<string, float> kVizinhos = getVizinhos(baseTreinamento,linhaTeste,k,nAtributos);
+		predicoes.push_back(predizerClasse(kVizinhos));
 		rewind(baseTreinamento);
 	}
 
-
+	float acuracia = calcularAcuracia(predicoes,baseTeste,nAtributos);
+	cout<<"Acuracia do modelo: "<<acuracia<<endl;
+	fclose(baseOriginal);
    	fclose(baseTreinamento);
+
    	fclose(baseTeste);
 
 	if(linhaTreinamento)
@@ -125,20 +158,19 @@ int main(int argc,char *argv[]){
 void print_error(int error){
 	switch(error){
 		case 1:
-			printf("Parametros incorretos");
+			cout<<"Parametros incorretos";
 		break;
 		default:
-			printf("Erro nao encontrado.");
+			cout<<"Erro nao encontrado.";
 		break;
 	}
-	printf("\n\n");
+	cout<<endl<<endl;
 	exit(EXIT_FAILURE);
 }
 
 int getNAtributos(FILE *base){
 	char *linha = NULL;
 	size_t len = 0;
-	// ssize_t read = ;
 	getline(&linha, &len, base);
 	rewind(base);
 	char *token = strtok(linha,",");
@@ -152,13 +184,13 @@ int getNAtributos(FILE *base){
 
 
 void printVizinhos(map<string, float> vizinhos){
-	printf("---------------\nprintVizinhos\n---------------\n");
+	cout<<"---------------\nprintVizinhos\n---------------\n";
 	for (map<string, float>::iterator it=vizinhos.begin(); it!=vizinhos.end(); ++it)
    		cout << it->first << " => " << it->second<<endl;
 }
 
 void printVector(vector<pair<string, float > > myvec,int mapSize){
-	printf("---------------\nprintVector\n---------------\n");
+	cout<<"---------------\nprintVector\n---------------\n";
     for (int i = 0; i < mapSize; ++i)
         cout << i << ": " << myvec[i].first << "-> " << myvec[i].second << "\n";
 }
