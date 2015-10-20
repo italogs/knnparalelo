@@ -63,6 +63,7 @@ int main(int argc,char *argv[]){
 	char hostname[256];
 
 	MPI_Init(&argc,&argv);
+
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	gethostname(hostname,255);
 
